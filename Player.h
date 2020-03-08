@@ -21,6 +21,7 @@ public:
 
 private:
 	SDL_Color color = {255, 0, 0, 255};
+	SDL_Color color2 = {180, 200, 0, 255};
 	std::vector<float> pos;
 	std::vector<float> vel = { 0.0f, 0.0f };
 };

@@ -14,20 +14,17 @@ Game::~Game()
 {
 }
 
+
 void Game::Loop()
 {
+	//SDL_SetRenderDrawColor(gfx.GetRenderer(), 255, 255, 255, 255);
+	//SDL_RenderClear(gfx.GetRenderer());
 	while (running) {
 		HandleInput();
 		Update();
 		Render();
 
-		if (false
-			//1 sec passed
-			) {
-
-			//CountFPS();
-			//gfx.DrawFPSCounter(fps);
-		}
+		Clean();
 	}
 
 	Quit();
@@ -157,59 +154,83 @@ void Game::HandleInput()
 
 void Game::Update()
 {
-	//player.SetPos({ player.GetPos()[0] + player.GetVel()[0], player.GetPos()[1] + player.GetVel()[1] });
+	player.SetPos({ player.GetPos()[0] + player.GetVel()[0], player.GetPos()[1] + player.GetVel()[1] });
 
 }
 
 void Game::Render()
 {
-	std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+
+	if (config.game.showFps) {
+		CountFps();
+		// -------------- drawing ------------------------
+		DrawFPS(1.0f);
+	}
+	// maybe use one small texture to render fps
+	// and rendering texture for the rest of the screen
+	// then I can render fps every now and then on top of everything else, clearing it first
+
+	//switch to rendering on renderingTexture
+	SDL_SetRenderDrawColor(gfx.GetRenderer(), 0, 0, 0, 255);
+	SDL_RenderClear(gfx.GetRenderer());
+
 
 	player.Draw(gfx);
-	gfx.ToScreen();
 
-	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+	std::vector<int> sprite_pos = { gfx.screenWidth / 2, gfx.screenHeight / 2, };
+	gfx.DrawSprite("pokeball.bmp", sprite_pos);
 
-	std::chrono::duration<float> runtime = end - start;
-	float durationSeconds = runtime.count();
+	// -------------- end of drawing ------------------
 
-	frameTimer += durationSeconds;
-	frames += 1;
-	if (frameTimer > 1) {
-		int fra = int(frames / frameTimer);
-		CountFPS(fra);
-		//const char* fpsToShow = "62 ";
-		gfx.DrawFPSCounter(fps);
 
-		frameTimer -= 1;
-		frames = 0;
+	//switch render target back and render to the screen
+	if (SDL_SetRenderTarget(gfx.GetRenderer(), NULL) == 0) {
+
+		//SDL_RenderCopy(gfx.GetRenderer(), gfx.GetRenderingTexture(), NULL, NULL);
+		SDL_RenderPresent(gfx.GetRenderer());
+	}
+	else {
+		cout << "Error when switching render target to the renderer: " << SDL_GetError() << endl;
 	}
 
-	//SDL_Surface* background = SDL_LoadBMP("background.bmp");
-	//SDL_Surface* sprite = SDL_LoadBMP("dog.bmp");
-
-	//SDL_Texture* tex_bg = SDL_CreateTextureFromSurface(renderer, background);
-	//SDL_FreeSurface(background);
-
-	//SDL_Texture* tex_spr = SDL_CreateTextureFromSurface(renderer, sprite);
-	//SDL_FreeSurface(sprite);
-
-	//for (int i = 0; i < 3; ++i) {
-	//	//First clear the renderer
-	//	SDL_RenderClear(renderer);
-	//	//Draw the texture
-	//	SDL_RenderCopy(renderer, tex_spr, NULL, NULL);
-	//	//Update the screen
-	//	SDL_RenderPresent(renderer);
-	//	//Take a quick break after all that hard work
-	//	SDL_Delay(1000);
-	//}
-
-
-	//SDL_Delay(3000);
-	//SDL_RenderPresent(renderer);
-
 }
+
+
+void Game::Clean()
+{
+}
+
+void Game::DrawFPS(float seconds)
+{
+	if (frameTimer > seconds) {
+		int fra = int(frames / frameTimer);
+		ConvertFPS(fra);
+		gfx.DrawFPSCounter(fps);
+
+		frameTimer -= seconds;
+		frames = 0;
+	}
+	else {
+		frames += 1;
+	}
+}
+
+void Game::CountFps()
+{
+	frameEnd = std::chrono::steady_clock::now();
+
+	frameDur = frameEnd - frameStart;
+	frameTimeSec = frameDur.count();
+
+	frameStart = std::chrono::steady_clock::now();
+
+	//just to make sure first run won't add (it's like 17000)
+	if (frameTimeSec < 1) {
+		frameTimer += frameTimeSec;
+	}
+}
+
+
 
 
 
@@ -224,7 +245,7 @@ void Game::Quit() {
 	running = false;
 }
 
-void Game::CountFPS(int framerate)
+void Game::ConvertFPS(int framerate)
 {
 	sprintf_s(fps, "%d", framerate);
 }

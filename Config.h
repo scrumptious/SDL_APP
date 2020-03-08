@@ -15,6 +15,7 @@ public:
 
 	struct {
 		const char* title = "Ludanoid";
+		bool showFps = 1;
 	} game;
 
 	struct {

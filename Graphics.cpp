@@ -1,5 +1,7 @@
-
 #include "Graphics.h"
+#include <sstream> // to convert to or from const char*
+#include <iostream> // needs this one too
+#include <vector>
 #include "SDL_ttf.h"
 #include "SDL_FontCache.h"
 
@@ -22,6 +24,7 @@ void Graphics::Init(const char* title, int x, int y, bool fullscreen)
 	using namespace std;
 	assert(initialized == false);
 	if (!initialized) {
+		//initialize window and renderer
 		window = SDL_CreateWindow(title, x, y, screenWidth, screenHeight, SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN & fullscreen);
 		if (window == NULL)
 		{
@@ -29,56 +32,133 @@ void Graphics::Init(const char* title, int x, int y, bool fullscreen)
 		}
 		else
 		{
-			renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC);
+			renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_TARGETTEXTURE);
 		}
 		if (renderer == NULL) {
 			cout << "Renderer Initialization Error: " << SDL_GetError() << endl;
+		}
+
+		//let's render to this texture before rendering to the renderer
+		renderingTexture = SDL_CreateTexture(
+			renderer, SDL_PIXELFORMAT_RGBA8888,
+			SDL_TEXTUREACCESS_TARGET, screenWidth, screenHeight
+		);
+		if (renderingTexture == NULL) {
+			cout << "Error: Failed to create temporary rendering texture: " << SDL_GetError() << endl;
+		}
+		else {
+			if (SDL_SetRenderTarget(renderer, renderingTexture) == -1) {
+				cout << "Error: Failed to switch render target to rendering texture: " << SDL_GetError() << endl;
+			}
 		}
 		initialized = true;
 	}
 
 }
 
-void Graphics::ToScreen()
+void Graphics::DrawSprite(const char* file, std::vector<int> pos, SDL_Rect* srcRect)
 {
+	SDL_Surface* sprite_sur = SDL_LoadBMP(file);
+	SDL_Texture* sprite_tex = SDL_CreateTextureFromSurface(renderer, sprite_sur);
+	SDL_FreeSurface(sprite_sur);
+
+	int sprW, sprH;
+	SDL_QueryTexture(sprite_tex, NULL, NULL, &sprW, &sprH);
+	SDL_Rect dstRect = { pos[0], pos[1], sprW, sprH };
+
+	SDL_RenderCopy(renderer, sprite_tex, srcRect, &dstRect);
+	SDL_DestroyTexture(sprite_tex);
+}
+
+void Graphics::ToScreen(const SDL_Color& c)
+{
+
 	SDL_RenderPresent(renderer);
 }
 
-void Graphics::DrawRect(SDL_Rect& r, SDL_Color& c)
+void Graphics::DrawRect(SDL_Rect& rect, SDL_Color& strokeColor, SDL_Color& fillColor)
 {
-	SDL_SetRenderDrawColor(renderer, c.r, c.g, c.b, c.a);
-	//SDL_RenderClear(renderer);
-	SDL_RenderDrawRect(renderer, &r);
+	Uint8 r, g, b, a;
+	SDL_GetRenderDrawColor(renderer, &r, &g, &b, &a);
+	SDL_SetRenderDrawColor(renderer, fillColor.r, fillColor.g, fillColor.b, fillColor.a);
+	SDL_RenderFillRect(renderer, &rect);
+
+	SDL_SetRenderDrawColor(renderer, strokeColor.r, strokeColor.g, strokeColor.b, strokeColor.a);
+	SDL_RenderDrawRect(renderer, &rect);
+	//set color back to how it was
+	SDL_SetRenderDrawColor(renderer, r, g, b, a);
 }
 
-void Graphics::DrawFPSCounter(char* ludwik)
+void Graphics::DrawFPSCounter(const char* fps)
 {
-	const char* fps = ludwik;
-	if (TTF_Init() < 0) {
-		std::cout << "Error Initialising TTF Fonts module: " << SDL_GetError() << std::endl;
+	//convert to int
+	int iFps = -1;
+	std::stringstream strValue;
+	strValue << fps;
+	strValue >> iFps;
+
+	if (lastFps != iFps) {
+		lastFps = iFps;
+
+		if (TTF_Init() < 0) {
+			std::cout << "Error Initialising TTF Fonts module: " << SDL_GetError() << std::endl;
+		}
+		TTF_Font* Courier = TTF_OpenFont("Courier.ttf", 72); //this opens a font style and sets a size
+		TTF_Font* Roboto = TTF_OpenFont("Roboto-Regular.ttf", 24); //this opens a font style and sets a size
+		SDL_Color fontColor;
+
+		//color counter based on amount of fps
+		if (iFps >= 50) {
+			fontColor = { 0, 255, 0 };
+		}
+		else if (iFps < 50 && iFps >= 30) {
+			fontColor = { 255, 255, 0 };
+		}
+		else if (iFps < 30) {
+			fontColor = { 255, 0, 0 };
+		}
+		//figure out dimensions of RenderCopy rects
+		int w = 0;
+		int h = 0;
+		SDL_Rect srcRect;
+		SDL_Rect dstRect;
+		//get text dimensions
+		if (TTF_SizeText(Roboto, fps, &w, &h) != -1)
+		{
+			srcRect = { 0, 0, w, h };
+			dstRect = { 5, 5, w, h };
+		}
+		else
+		{
+			srcRect = { 0, 0, 100, 80 };
+			dstRect = { 5, 5, 100, 80 };
+		}
+		SDL_Rect dstRect2 = { 0, 0, w, h };
+		std::cout << std::endl << "drawing fps counter" << std::endl;
+		//SDL_Color bg = { 0, 0, 0, 255 };
+		//render fps
+		SDL_Surface* surfaceMessage = TTF_RenderText_Solid(Roboto, fps, fontColor);
+		//SDL_Surface* messageSurf = TTF_RenderText_Shaded(Roboto, fps, fontColor, bg);
+		SDL_Texture* messageTex = SDL_CreateTextureFromSurface(renderer, surfaceMessage);
+		//SDL_Texture* messageTex = SDL_CreateTextureFromSurface(renderer, messageSurf);
+		SDL_RenderFillRect(renderer, &dstRect);
+		SDL_RenderCopy(renderer, messageTex, NULL, &dstRect2);
+		//SDL_RenderCopy(renderer, messageTex, &srcRect, &dstRect);
+
+		//clean up
+		SDL_FreeSurface(surfaceMessage);
+		//SDL_FreeSurface(messageSurf);
+		SDL_DestroyTexture(messageTex);
+		TTF_CloseFont(Courier);
+		TTF_CloseFont(Roboto);
+		TTF_Quit();
+
 	}
-	TTF_Font* Courier = TTF_OpenFont("Courier.ttf", 72); //this opens a font style and sets a size
-	SDL_Color White = {255,255,0};  // this is the color in rgb format, maxing out all would give you the color white, and it will be your text's color
-	std::cout << "frames: " << fps << std::endl;
-	SDL_Color fg = { 0, 0, 0 };
-	SDL_Color bg = { 0, 0, 0};
-
-	SDL_Surface* surfaceMessage = TTF_RenderText_Shaded(Courier, fps, White, bg); // as TTF_RenderText_Solid could only be used on SDL_Surface then you have to create the surface first
-	SDL_Texture* Message = SDL_CreateTextureFromSurface(renderer, surfaceMessage); //now you can convert it into a texture
-	SDL_Rect Message_rect = { 10, 10, 70, 30 }; //create a rect
-	//Mind you that (0,0) is on the top left of the window/screen, think a rect as the text's box, that way it would be very simple to understance
-	//Now since it's a texture, you have to put RenderCopy in your game loop area, the area where the whole code executes
-	SDL_RenderCopy(renderer, Message, NULL, &Message_rect);
-	//Don't forget too free your surface and texture
-
-	SDL_FreeSurface(surfaceMessage);
-	SDL_DestroyTexture(Message);
-	TTF_CloseFont(Courier);
-	TTF_Quit();
 }
 
-const void Graphics::Clean()
+void Graphics::Clean()
 {
+	SDL_DestroyTexture(renderingTexture);
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
@@ -87,6 +167,11 @@ const void Graphics::Clean()
 SDL_Renderer* Graphics::GetRenderer()
 {
 	return renderer;
+}
+
+SDL_Texture* Graphics::GetRenderingTexture()
+{
+	return renderingTexture;
 }
 
 //void Graphics::DrawTestRect()

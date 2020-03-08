@@ -28,5 +28,5 @@ std::vector<float> Player::GetVel()
 void Player::Draw(Graphics& gfx)
 {
 	SDL_Rect r = { int(pos[0]), int(pos[1]), dim[0], dim[1] };
-	gfx.DrawRect(r, color);
+	gfx.DrawRect(r, color, color2);
 }

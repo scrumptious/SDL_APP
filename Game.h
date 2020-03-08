@@ -16,15 +16,23 @@ public:
 	Game();
 	~Game();
 	//void Init();
+	void Loop();
+	bool IsRunning();
+
+
+private:
+	
 	void HandleInput();
 	void Update();
 	void Render();
-	void Loop();
-	bool IsRunning();
-	void Quit();
 
-private:
-	void CountFPS(int frameTimer);
+	void Clean();
+	//fps methods
+	void DrawFPS(float seconds);
+	void CountFps();
+	void ConvertFPS(int frameTimer);
+
+	void Quit();
 
 
 
@@ -38,8 +46,11 @@ private:
 
 	float frameTimer = 0.0f;
 	int frames = 0;
-	char fps[10];
-	std::chrono::steady_clock::time_point now;
+	char fps[10] = "";
+	std::chrono::steady_clock::time_point frameStart;
+	std::chrono::steady_clock::time_point frameEnd;
+	std::chrono::duration<float> frameDur;
+	float frameTimeSec = 0.0f;
 
 };
 
