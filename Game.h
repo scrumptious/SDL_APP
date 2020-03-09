@@ -28,17 +28,23 @@ private:
 
 	void Clean();
 	//fps methods
-	void DrawFPS(float seconds);
+	void ShowFPS(float seconds);
 	void CountFps();
-	void ConvertFPS(int frameTimer);
+	void ConvertFPS(float frameTimer);
 
+	void BindToScreenEdges();
 	void Quit();
 
+
+public:
+	std::vector<int> turtle2_pos = { gfx.screenWidth - 600, gfx.screenHeight - 400 };
 
 
 private:
 	bool running = true;
 	const std::vector<float> initialPlayerPos = { 100.0f, 100.0f };
+
+	SDL_Texture* turtle = NULL;
 
 	Player player;
 	Config config;
@@ -51,6 +57,7 @@ private:
 	std::chrono::steady_clock::time_point frameEnd;
 	std::chrono::duration<float> frameDur;
 	float frameTimeSec = 0.0f;
+
 
 };
 

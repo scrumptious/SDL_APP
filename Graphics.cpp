@@ -32,7 +32,7 @@ void Graphics::Init(const char* title, int x, int y, bool fullscreen)
 		}
 		else
 		{
-			renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_TARGETTEXTURE);
+			renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_TARGETTEXTURE | SDL_RENDERER_ACCELERATED);
 		}
 		if (renderer == NULL) {
 			cout << "Renderer Initialization Error: " << SDL_GetError() << endl;
@@ -50,15 +50,26 @@ void Graphics::Init(const char* title, int x, int y, bool fullscreen)
 			if (SDL_SetRenderTarget(renderer, renderingTexture) == -1) {
 				cout << "Error: Failed to switch render target to rendering texture: " << SDL_GetError() << endl;
 			}
+			else {
+				//background color
+				SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+				//SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+				//Initialize PNG loading
+				int imgFlags = IMG_INIT_PNG;
+				if (!(IMG_Init(imgFlags) & imgFlags))
+				{
+					cout << "Error: Failed to initialize SDL_image: " << IMG_GetError() << endl;
+				}
+			}
 		}
 		initialized = true;
 	}
 
 }
 
-void Graphics::DrawSprite(const char* file, std::vector<int> pos, SDL_Rect* srcRect)
+void Graphics::DrawSpriteBMP(const char* filepath, std::vector<int> pos, SDL_Rect* srcRect)
 {
-	SDL_Surface* sprite_sur = SDL_LoadBMP(file);
+	SDL_Surface* sprite_sur = SDL_LoadBMP(filepath);
 	SDL_Texture* sprite_tex = SDL_CreateTextureFromSurface(renderer, sprite_sur);
 	SDL_FreeSurface(sprite_sur);
 
@@ -72,7 +83,6 @@ void Graphics::DrawSprite(const char* file, std::vector<int> pos, SDL_Rect* srcR
 
 void Graphics::ToScreen(const SDL_Color& c)
 {
-
 	SDL_RenderPresent(renderer);
 }
 
@@ -89,13 +99,48 @@ void Graphics::DrawRect(SDL_Rect& rect, SDL_Color& strokeColor, SDL_Color& fillC
 	SDL_SetRenderDrawColor(renderer, r, g, b, a);
 }
 
+void Graphics::DrawSprite(const char* filepath, std::vector<int> pos)
+{
+	SDL_Texture* sprite_tex = LoadTexture(filepath);
+	if (sprite_tex == NULL) {
+		std::cout << "Error in DrawSprite(): " << SDL_GetError() << std::endl;
+	}
+	else {
+		int w, h;
+		DrawTexture(sprite_tex, pos, &w, &h);
+	}
+}
+
+std::vector<int> Graphics::DrawSpriteEx(const char* filepath, std::vector<int> pos)
+{
+	std::vector<int> size = { 0, 0 };
+	SDL_Texture* sprite_tex = LoadTexture(filepath);
+	if (sprite_tex == NULL) {
+		std::cout << "Error in DrawSprite(): " << SDL_GetError() << std::endl;
+	}
+	else {
+		int w, h;
+		DrawTexture(sprite_tex, pos, &w, &h);
+		size[0] = w;
+		size[1] = h;
+	}
+	return size;
+}
+
 void Graphics::DrawFPSCounter(const char* fps)
 {
+	SDL_Color green = { 0, 255, 0, 255 };
+	SDL_SetRenderDrawColor(renderer, green.r, green.g, green.b, green.a);
+
 	//convert to int
 	int iFps = -1;
 	std::stringstream strValue;
 	strValue << fps;
 	strValue >> iFps;
+
+	//to don't check I added this line
+	lastFps = iFps - 1;
+
 
 	if (lastFps != iFps) {
 		lastFps = iFps;
@@ -154,6 +199,18 @@ void Graphics::DrawFPSCounter(const char* fps)
 		TTF_Quit();
 
 	}
+
+}
+
+void Graphics::DrawTexture(SDL_Texture* texture, std::vector<int> pos, int* w, int* h)
+{
+	SDL_QueryTexture(texture, NULL, NULL, w, h);
+
+	SDL_Rect spriteSrc = { 0, 0, *w, *h };
+	SDL_Rect spriteDest = { pos[0], pos[1], *w, *h };
+
+	SDL_RenderCopy(renderer, texture, &spriteSrc, &spriteDest);
+	SDL_DestroyTexture(texture);
 }
 
 void Graphics::Clean()
@@ -162,6 +219,24 @@ void Graphics::Clean()
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
+}
+
+SDL_Texture* Graphics::LoadTexture(const char* filepath)
+{
+	SDL_Texture* loadedTexture = NULL;
+
+	SDL_Surface* tempSurface = IMG_Load(filepath);
+	if (tempSurface == NULL) {
+		std::cout << "Error Loading image! IMG_Load Error: " << SDL_GetError() << std::endl;
+	}
+	else {
+		loadedTexture = SDL_CreateTextureFromSurface(renderer, tempSurface);
+		if (loadedTexture == NULL) {
+			std::cout << "Error! Failed to create a texture from surface: " << SDL_GetError() << std::endl;
+		}
+		SDL_FreeSurface(tempSurface);
+	}
+	return loadedTexture;
 }
 
 SDL_Renderer* Graphics::GetRenderer()
@@ -178,4 +253,4 @@ SDL_Texture* Graphics::GetRenderingTexture()
 //{
 //	SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
 //	SDL_RenderClear(renderer);
-//}
+//} 
