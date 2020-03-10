@@ -2,12 +2,15 @@
 #include <chrono>
 #include <cmath>
 #include <iostream>
+#include <sstream> // to convert to or from const char*
 #include <string>
 #include "SDL.h"
 #include "Player.h"
+#include "Bullet.h"
 #include "Config.h"
 #include "Graphics.h"
 #include "Utils.h"
+#include "Color.h"
 
 
 class Game
@@ -31,7 +34,7 @@ private:
 	void ShowFPS(float seconds);
 	void CountFps();
 	void ConvertFPS(float frameTimer);
-
+	void CreateBullet();
 	void BindToScreenEdges();
 	void Quit();
 
@@ -42,13 +45,16 @@ public:
 
 private:
 	bool running = true;
-	const std::vector<float> initialPlayerPos = { 100.0f, 100.0f };
+	const std::vector<int> initialPlayerPos = { gfx.screenWidth / 2, gfx.screenHeight / 2};
 
 	SDL_Texture* turtle = NULL;
 
 	Player player;
 	Config config;
 	Graphics gfx;
+	Color* colors;
+	std::vector<Bullet> bullets;
+
 
 	float frameTimer = 0.0f;
 	int frames = 0;

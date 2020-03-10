@@ -1,26 +1,34 @@
 #include "Player.h"
 
-Player::Player(std::vector<float> in_pos)
+Player::Player(std::vector<int> in_pos)
 {
 	pos = in_pos;
 }
 
-void Player::SetPos(std::vector<float> new_pos)
+void Player::SetPos(std::vector<int> new_pos)
 {
 	pos = new_pos;
 }
 
-void Player::SetPosX(float x)
+void Player::SetPosX(int x)
 {
 	pos[0] = x;
 }
 
-void Player::SetPosY(float y)
+void Player::SetPosY(int y)
 {
 	pos[1] = y;
 }
 
-std::vector<float> Player::GetPos()
+std::vector<int> Player::GetSpaceshipFront()
+{
+	float offsetX = 0.49f * dim[0];
+	float offsetY = 0.012f * dim[1];
+
+	return std::vector<int> {int(pos[0] + offsetX), int(pos[1] + offsetY)};
+}
+
+std::vector<int> Player::GetPos()
 {
 	return pos;
 }

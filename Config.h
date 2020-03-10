@@ -1,4 +1,6 @@
 #pragma once
+#include <SDL.h>
+
 class Config
 {
 public:
@@ -20,6 +22,7 @@ public:
 
 	struct {
 		bool fullscreen = false;
+		SDL_Color bgColor = { 255, 255, 255, 255 };
 	} video;
 private:
 	int activeController = controllers::KEYBOARD;

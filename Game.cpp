@@ -7,6 +7,7 @@ Game::Game()
 	player(initialPlayerPos),
 	gfx(config)
 {
+	player.Draw(gfx);
 
 }
 
@@ -53,6 +54,13 @@ void Game::BindToScreenEdges() {
 	}
 }
 
+void Game::CreateBullet()
+{
+	if(bullets.size() < 100) {
+		bullets.push_back(Bullet(player.GetSpaceshipFront()));
+	}
+}
+
 void Game::HandleInput()
 {
 	SDL_Event e;
@@ -61,12 +69,10 @@ void Game::HandleInput()
 		if (config.getActiveController() == config.controllers::KEYBOARD) {
 
 			if (e.type == SDL_KEYDOWN) {
-				float posX = player.GetPos()[0];
-				float posY = player.GetPos()[1];
+				int posX = player.GetPos()[0];
+				int posY = player.GetPos()[1];
 				float velX = player.GetVel()[0];
 				float velY = player.GetVel()[1];
-				printf("player pos: %f/%f \n", player.GetPos()[0], player.GetPos()[1]);
-				printf("player vel: %f/%f \n", player.GetVel()[0], player.GetVel()[1]);
 
 				switch (e.key.keysym.sym) {
 					case SDLK_q:
@@ -100,6 +106,11 @@ void Game::HandleInput()
 						}
 						break;
 					}
+					case SDLK_SPACE:
+					{
+						//CreateBullet();
+					}
+					break;
 				}
 			}
 			else if (e.type == SDL_KEYUP) {
@@ -135,6 +146,10 @@ void Game::HandleInput()
 					//	}
 					//	break;
 					//}
+					case SDLK_SPACE:
+					{
+						CreateBullet();
+					}
 				}
 			}
 		}//end of keyboard input handling
@@ -166,8 +181,13 @@ void Game::HandleInput()
 void Game::Update()
 {
 	BindToScreenEdges();
-	player.SetPos({ player.GetPos()[0] + player.GetVel()[0], player.GetPos()[1] + player.GetVel()[1] });
+	player.SetPos({ player.GetPos()[0] + int(player.GetVel()[0]), player.GetPos()[1] + int(player.GetVel()[1]) });
 
+	for (int i = 0; i < bullets.size(); i++) {
+		if (bullets[i].pos[1] > -20) {
+			bullets[i].pos[1] += bullets[i].getVelY();
+		}
+	}
 }
 
 void Game::Render()
@@ -183,13 +203,45 @@ void Game::Render()
 	
 	std::vector<int> turtle_pos = { gfx.screenWidth - 200, gfx.screenHeight - 200 };
 	gfx.DrawSprite("turtle32.png", turtle_pos);
-
 	
 	gfx.DrawSprite("turtle64.png", turtle2_pos);
 
 	player.Draw(gfx);
 
+	//convert to const char* and print amount of bullets on the screen
+	std::string nBullets;
+	stringstream inputValue;
+	inputValue << bullets.size();
+	inputValue >> nBullets;
+	nBullets = "bullets: " + nBullets;
 
+	gfx.DisplayText(nBullets.c_str(), { 10, 10 }, 12, &(colors->black));
+	//std::string playerPos = "player pos: " + to_string(player.GetPos()[0]) + ":" + to_string(player.GetPos()[1]);
+	gfx.DisplayText(nBullets.c_str(), { 10, 10 }, 12, &(colors->black));
+	gfx.DisplayText(
+		( "player pos: " + to_string(player.GetPos()[0]) + ":" + to_string(player.GetPos()[1])
+		).c_str(),
+		{ 10, 35 }, 12, &(colors->black)
+	);
+	gfx.DisplayText(
+		("player vel: " + to_string(player.GetVel()[0]) + ":" + to_string(player.GetVel()[1])
+			).c_str(),
+		{ 10, 60 }, 12, &(colors->black)
+	);
+	//std::vector<int> dot_pos = player.GetSpaceshipFront();
+	//gfx.DrawSprite("pokeball4.png", dot_pos);
+	//std::cout << "pokeball pos: " << dot_pos[0] << '/' << dot_pos[1] << endl;
+
+	//std::cout << "bullet pos: " << bullet.pos[0] << '/' << bullet.pos[1] << endl;
+
+	for (int i = 0; i < bullets.size(); i++) {
+		if (bullets[i].pos[1] > -10) {
+   			gfx.DrawSprite(bullets[i].spritePath, bullets[i].pos);
+		}
+		else {
+			bullets.erase(bullets.begin() + i);
+		}
+	}
 
 
 	//switch render target back and render to the screen
